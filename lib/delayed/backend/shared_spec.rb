@@ -115,15 +115,14 @@ shared_examples_for 'a delayed_job backend' do
     end
   end
 
-  describe "payload_object" do
-    it "should raise a DeserializationError when the job class is totally unknown" do
+  # BRANDON
+  describe "payload_object with an unknown class" do
+    it "should not raise an error when the job class is totally unknown" do
+      worker = Delayed::Worker.new(:max_priority => nil, :min_priority => nil, :quiet => true)
       job = described_class.new :handler => "--- !ruby/object:JobThatDoesNotExist {}"
-      lambda { job.payload_object }.should raise_error(Delayed::Backend::DeserializationError)
-    end
-
-    it "should raise a DeserializationError when the job struct is totally unknown" do
-      job = described_class.new :handler => "--- !ruby/struct:StructThatDoesNotExist {}"
-      lambda { job.payload_object }.should raise_error(Delayed::Backend::DeserializationError)
+      worker.run(job)
+      job.reload.last_error.should =~ /Job failed to load: uninitialized constant JobThatDoesNotExist/
+      job.attempts.should == 1
     end
   end
 
@@ -294,7 +293,7 @@ shared_examples_for 'a delayed_job backend' do
       @job.locked_at.should be_nil
     end
   end
-  
+
   context "large handler" do
     before do
       text = "Lorem ipsum dolor sit amet. " * 1000
@@ -402,7 +401,7 @@ shared_examples_for 'a delayed_job backend' do
         # reset defaults
         Delayed::Worker.destroy_failed_jobs = true
         Delayed::Worker.max_attempts = 25
-        
+
         @job = Delayed::Job.enqueue(ErrorJob.new)
       end
 
@@ -425,12 +424,12 @@ shared_examples_for 'a delayed_job backend' do
         @job.run_at.should > Delayed::Job.db_time_now - 10.minutes
         @job.run_at.should < Delayed::Job.db_time_now + 10.minutes
       end
-      
+
       it 'should re-schedule with handler provided time if present' do
         @job = Delayed::Job.enqueue(CustomRescheduleJob.new(99.minutes))
         @worker.run(@job)
         @job.reload
-        
+
         (Delayed::Job.db_time_now + 99.minutes - @job.run_at).abs.should < 1
       end
     end

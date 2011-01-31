@@ -1,6 +1,13 @@
 module Delayed
   module Backend
-    class DeserializationError < StandardError
+    class FailedPayload
+      def initialize(error)
+        @error = error
+      end
+
+      def perform
+        raise Exception.new(@error)
+      end
     end
 
     module Base
@@ -68,8 +75,7 @@ module Delayed
       def payload_object
         @payload_object ||= YAML.load(self.handler)
       rescue TypeError, LoadError, NameError => e
-          raise DeserializationError,
-            "Job failed to load: #{e.message}. Try to manually require the required file. Handler: #{handler.inspect}"
+        FailedPayload.new("Job failed to load: #{e.message}")
       end
 
       def invoke_job
@@ -97,11 +103,11 @@ module Delayed
       end
 
       def reschedule_at
-        payload_object.respond_to?(:reschedule_at) ? 
+        payload_object.respond_to?(:reschedule_at) ?
           payload_object.reschedule_at(self.class.db_time_now, attempts) :
           self.class.db_time_now + (attempts ** 4) + 5
       end
-      
+
     protected
 
       def set_default_run_at
