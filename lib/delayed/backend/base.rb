@@ -34,6 +34,7 @@ module Delayed
             raise ArgumentError, 'Cannot enqueue items which do not respond to perform'
           end
 
+          options.merge!(:class_name => options[:payload_object].class.name)
           self.create(options).tap do |job|
             job.hook(:enqueue)
           end

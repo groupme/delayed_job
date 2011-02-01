@@ -43,6 +43,11 @@ shared_examples_for 'a delayed_job backend' do
         job = described_class.enqueue :payload_object => SimpleJob.new, :run_at => later
         job.run_at.should be_close(later, 1)
       end
+
+      it "should store the job class name" do
+        job = described_class.enqueue :payload_object => SimpleJob.new
+        job.class_name.should == "SimpleJob"
+      end
     end
 
     context "with multiple arguments" do
