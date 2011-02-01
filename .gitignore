@@ -1,2 +1,4 @@
 *.gem
 *.swp
+.tmtags
+delayed_job_test
